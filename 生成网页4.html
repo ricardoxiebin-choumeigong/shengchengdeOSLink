@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSLink - 连接无限可能</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* =========================================
+           1. 全局变量与基础设置
+           ========================================= */
+        :root {
+            --bg-deep: #050507;
+            --bg-card: #0e0e12;
+            --bg-card-hover: #16161c;
+            --primary: #8a2be2;
+            --secondary: #00f0ff;
+            --text-main: #ffffff;
+            --text-sub: #9494a8;
+            --gradient-glow: linear-gradient(135deg, var(--primary), var(--secondary));
+            --border-light: rgba(255, 255, 255, 0.08);
+            --shadow-glow: 0 0 20px rgba(138, 43, 226, 0.2);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+        
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+            /* 背景纹理 */
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(138, 43, 226, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 240, 255, 0.05) 0%, transparent 40%);
+        }
+
+        a { text-decoration: none; color: inherit; transition: 0.3s; }
+        ul { list-style: none; }
+        section { position: relative; z-index: 1; overflow: hidden; }
+
+        /* 通用类 */
+        .container { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+        .section-padding { padding: 100px 0; }
+        .text-center { text-align: center; }
+        
+        h2 {
+            font-size: 3rem; font-weight: 800; margin-bottom: 16px;
+            background: linear-gradient(to right, #fff, #b0b0d0);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .section-desc { color: var(--text-sub); margin-bottom: 60px; font-size: 1.1rem; }
+
+        /* 滚动登场动画类 */
+        .reveal { opacity: 0; transform: translateY(40px); transition: 1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
+        /* 按钮组件 */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 12px 32px; border-radius: 50px; font-weight: 600; cursor: pointer;
+            transition: all 0.3s; position: relative; overflow: hidden; z-index: 1;
+        }
+        .btn-primary {
+            background: var(--gradient-glow); color: #fff; border: none;
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4);
+        }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6); }
+        
+        .btn-outline {
+            background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn-outline:hover { border-color: var(--secondary); color: var(--secondary); background: rgba(0, 240, 255, 0.05); }
+
+        /* =========================================
+           2. 导航栏 (Header)
+           ========================================= */
+        header {
+            position: fixed; top: 0; width: 100%; height: 80px; z-index: 1000;
+            background: rgba(5, 5, 7, 0.85); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-light);
+        }
+        nav { display: flex; justify-content: space-between; align-items: center; height: 100%; }
+        .logo { font-size: 1.8rem; font-weight: 900; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
+        .logo i { color: var(--secondary); filter: drop-shadow(0 0 5px var(--secondary)); }
+        
+        .nav-links { display: flex; gap: 30px; }
+        .nav-links a { font-weight: 500; font-size: 0.95rem; opacity: 0.8; }
+        .nav-links a:hover { opacity: 1; color: var(--secondary); }
+        .nav-links a.active { color: var(--secondary); font-weight: 700; }
+        
+        .nav-actions { display: flex; gap: 15px; }
+
+        /* =========================================
+           3. 核心 3D 卡片与 CSS 设备绘制 (The Magic)
+           ========================================= */
+        .tilt-wrap {
+            transform-style: preserve-3d; transform: perspective(1000px);
+            transition: transform 0.1s ease-out; /* JS 驱动 */
+        }
+        
+        /* CSS 绘制的 MacBook */
+        .css-macbook {
+            width: 500px; height: 300px; background: #1a1a20; border-radius: 16px;
+            position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border: 1px solid #333; transform-style: preserve-3d;
+        }
+        .mac-screen {
+            position: absolute; top: 12px; left: 12px; right: 12px; bottom: 30px;
+            background: #000; overflow: hidden; border-radius: 4px;
+            display: flex; flex-direction: column;
+        }
+        .mac-body-bottom {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 14px;
+            background: #222; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;
+        }
+        /* 模拟屏幕内容 */
+        .mock-ui-header { height: 25px; background: #1e1e24; display: flex; align-items: center; padding-left: 10px; gap: 5px; }
+        .ui-dot { width: 8px; height: 8px; border-radius: 50%; background: #444; }
+        .mock-ui-body { 
+            flex: 1; background: linear-gradient(120deg, #101015, #1a1a24); padding: 20px;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        /* UI 骨架屏动画 */
+        .ui-skeleton { height: 10px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+        .ui-block { height: 80px; background: rgba(138, 43, 226, 0.1); border: 1px solid rgba(138, 43, 226, 0.2); border-radius: 8px; position: relative; overflow: hidden; }
+        .ui-block::after {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: skeleton-loading 2s infinite;
+        }
+
+        /* CSS 绘制的 iPhone */
+        .css-iphone {
+            width: 120px; height: 240px; background: #000; border-radius: 20px;
+            position: absolute; bottom: -20px; right: -40px;
+            border: 4px solid #333; box-shadow: -10px 10px 30px rgba(0,0,0,0.6);
+            transform: translateZ(50px); /* 悬浮在电脑之上 */
+        }
+        .phone-screen {
+            position: absolute; inset: 4px; border-radius: 16px; background: #111; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .phone-notch { position: absolute; top: 0; width: 50%; height: 15px; background: #333; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; z-index: 2; }
+        .connect-btn {
+            width: 60px; height: 60px; border-radius: 50%; background: var(--gradient-glow);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 20px var(--primary); animation: pulse 2s infinite;
+        }
+
+        @keyframes skeleton-loading { 0% { left: -100%; } 100% { left: 200%; } }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+
+        /* =========================================
+           4. Hero 区域 (远程办公)
+           ========================================= */
+        .hero { padding-top: 180px; padding-bottom: 120px; }
+        .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+        
+        .hero-text h1 { font-size: 3.8rem; line-height: 1.1; margin-bottom: 24px; font-weight: 800; }
+        .hero-text h1 span { background: var(--gradient-glow); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-text p { font-size: 1.2rem; color: var(--text-sub); margin-bottom: 40px; max-width: 500px; }
+        
+        .hero-visual { position: relative; display: flex; justify-content: center; }
+        .hero-visual .glow-bg {
+            position: absolute; width: 400px; height: 400px; background: var(--primary);
+            filter: blur(120px); opacity: 0.2; z-index: -1;
+        }
+
+        /* =========================================
+           5. 交替特性区域 (Feature Rows)
+           ========================================= */
+        .feature-row { display: flex; align-items: center; justify-content: space-between; gap: 80px; margin-bottom: 120px; }
+        .feature-row.reverse { flex-direction: row-reverse; }
+        .feature-info { flex: 1; }
+        .feature-info h3 { font-size: 2.2rem; margin-bottom: 20px; }
+        .feature-info p { color: var(--text-sub); font-size: 1.1rem; margin-bottom: 30px; }
+        .feature-img { flex: 1; display: flex; justify-content: center; perspective: 1000px; }
+
+        /* 特性展示框 (CSS Art) */
+        .feature-card {
+            width: 100%; max-width: 450px; height: 280px; background: #131318;
+            border-radius: 12px; border: 1px solid var(--border-light);
+            position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        /* 安全特性 */
+        .shield-icon { font-size: 6rem; background: linear-gradient(180deg, var(--secondary), transparent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; opacity: 0.2; }
+        .lock-icon { font-size: 3rem; color: #fff; position: absolute; z-index: 2; filter: drop-shadow(0 0 15px var(--secondary)); }
+
+        /* 键鼠特性 */
+        .keyboard-layout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; transform: skewX(-10deg); }
+        .key { width: 40px; height: 40px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-weight: bold; color: #fff; }
+        .key.active { background: var(--primary); border-color: var(--primary); box-shadow: 0 0 15px var(--primary); }
+
+        /* 画质特性 */
+        .hd-badge { font-size: 4rem; font-weight: 900; font-style: italic; background: linear-gradient(90deg, #fff, #999); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -2px; }
+
+        /* =========================================
+           6. 游戏区域 (Games)
+           ========================================= */
+        .game-section { background: #08080a; }
+        .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 30px; }
+        
+        .game-card {
+            height: 360px; border-radius: 12px; position: relative; cursor: pointer;
+            transform-style: preserve-3d; transition: transform 0.1s; background: #111;
+        }
+        .game-bg {
+            position: absolute; inset: 0; background-size: cover; background-position: center; border-radius: 12px;
+            filter: brightness(0.6); transition: 0.4s; transform: translateZ(-20px);
+        }
+        .game-card:hover .game-bg { filter: brightness(1); transform: translateZ(-20px) scale(1.1); }
+        
+        .game-info {
+            position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            transform: translateZ(30px); border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+        }
+        .game-info h4 { font-size: 1.4rem; margin-bottom: 5px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        .game-tag { font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 3px 8px; border-radius: 4px; backdrop-filter: blur(5px); }
+
+        /* Base64 图片数据 (复用之前的高质量图片) */
+        .g-1 { background-image: url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCCIKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEwAZADAREAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP//Z'); }
+        .g-2 { background-image: url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCCIKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEwAZADAREAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP//Z'); }
+        .g-3 { background-image: url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCCIKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEwAZADAREAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP//Z'); }
+        .g-4 { background-image: url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCCIKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEwAZADAREAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAP//Z'); }
+
+
+        /* =========================================
+           7. 优势网格 (Advantages)
+           ========================================= */
+        .adv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        
+        .adv-card {
+            background: var(--bg-card); padding: 40px 30px; border-radius: 12px;
+            text-align: center; border: 1px solid var(--border-light);
+            transition: all 0.3s; position: relative; overflow: hidden;
+            transform-style: preserve-3d;
+        }
+        .adv-card:hover { border-color: var(--primary); transform: translateY(-5px); background: var(--bg-card-hover); }
+        .adv-card i { font-size: 2.5rem; color: var(--secondary); margin-bottom: 20px; display: inline-block; transform: translateZ(20px); }
+        .adv-card h4 { font-size: 1.25rem; margin-bottom: 10px; color: #fff; transform: translateZ(10px); }
+        .adv-card a { color: var(--text-sub); font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 5px; transform: translateZ(10px); }
+        .adv-card a:hover { color: var(--secondary); }
+        
+        /* 装饰性背景光 */
+        .adv-card::before {
+            content: ''; position: absolute; top: -50px; left: -50px; width: 100px; height: 100px;
+            background: var(--primary); filter: blur(60px); opacity: 0; transition: opacity 0.3s;
+        }
+        .adv-card:hover::before { opacity: 0.2; }
+
+        /* =========================================
+           8. 博客与教程 (Blog/Tutorials)
+           ========================================= */
+        .blog-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+        
+        .blog-card {
+            background: transparent; border-radius: 8px; cursor: pointer;
+            transition: transform 0.3s; display: block;
+        }
+        .blog-card:hover { transform: translateY(-5px); }
+        
+        /* 博客图片占位符 (使用 CSS 渐变模拟科技感封面) */
+        .blog-thumb {
+            height: 140px; border-radius: 8px; margin-bottom: 15px; position: relative; overflow: hidden;
+        }
+        .bg-gradient-1 { background: linear-gradient(45deg, #2b133b, #111); }
+        .bg-gradient-2 { background: linear-gradient(45deg, #0f2a33, #111); }
+        .bg-gradient-3 { background: linear-gradient(45deg, #111, #362a14); }
+        .bg-gradient-4 { background: linear-gradient(45deg, #132233, #000); }
+        
+        .blog-thumb::after {
+            content: 'ARTICLE'; position: absolute; top: 10px; right: 10px;
+            font-size: 0.6rem; background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 4px;
+        }
+        
+        .blog-card h5 { font-size: 1rem; line-height: 1.4; margin-bottom: 8px; color: #e0e0e0; transition: color 0.2s; }
+        .blog-card:hover h5 { color: var(--secondary); }
+        .blog-card p { font-size: 0.85rem; color: #666; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .blog-meta { font-size: 0.75rem; color: #555; margin-top: 10px; }
+
+        /* =========================================
+           9. 页脚 (Footer)
+           ========================================= */
+        footer { border-top: 1px solid var(--border-light); background: #020202; padding-top: 80px; padding-bottom: 40px; margin-top: 80px; }
+        .footer-content { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 40px; margin-bottom: 60px; }
+        .footer-col { flex: 1; min-width: 200px; }
+        .footer-col h4 { color: #fff; margin-bottom: 25px; font-size: 1.1rem; }
+        .footer-col ul li { margin-bottom: 12px; }
+        .footer-col ul li a { color: #777; font-size: 0.95rem; }
+        .footer-col ul li a:hover { color: var(--primary); }
+        .copyright { text-align: center; color: #555; font-size: 0.85rem; padding-top: 20px; border-top: 1px solid var(--border-light); }
+
+        /* =========================================
+           10. 响应式适配
+           ========================================= */
+        @media (max-width: 992px) {
+            .hero-grid { grid-template-columns: 1fr; text-align: center; }
+            .hero-visual { margin-top: 50px; }
+            .feature-row { flex-direction: column; gap: 40px; text-align: center; }
+            .feature-row.reverse { flex-direction: column; }
+            .adv-grid { grid-template-columns: repeat(2, 1fr); }
+            .blog-grid { grid-template-columns: repeat(2, 1fr); }
+            .css-macbook { width: 100%; max-width: 500px; }
+        }
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5rem; }
+            h2 { font-size: 2rem; }
+            .nav-links { display: none; }
+            .adv-grid { grid-template-columns: 1fr; }
+            .game-grid { grid-template-columns: 1fr; }
+            .css-iphone { right: -10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <nav>
+                <div class="logo">
+                    <i class="fas fa-bolt"></i>
+                    <span>OSLink</span>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="#" class="active">特色</a></li>
+                    <li><a href="#features">功能</a></li>
+                    <li><a href="#games">游戏</a></li>
+                    <li><a href="#blog">教程</a></li>
+                </ul>
+                <div class="nav-actions">
+                    <a href="#" class="btn btn-outline" style="padding: 8px 20px; font-size: 0.9rem;">English</a>
+                    <a href="#" class="btn btn-primary" style="padding: 8px 20px; font-size: 0.9rem;">下载使用</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container hero-grid">
+            <div class="hero-text reveal">
+                <h1>随时随地<br><span>安全稳定的远程办公</span></h1>
+                <p>打破空间限制。支持手机/平板控制，无论是出差、居家还是拜访客户，都能瞬间连接公司电脑，进行专业级操作。</p>
+                <div style="display: flex; gap: 15px; justify-content: flex-start;">
+                    <a href="#" class="btn btn-primary">免费开始使用</a>
+                    <a href="#" class="btn btn-outline"><i class="fab fa-windows" style="margin-right: 8px;"></i> Windows版</a>
+                </div>
+            </div>
+            
+            <div class="hero-visual reveal tilt-wrap">
+                <div class="glow-bg"></div>
+                <div class="css-macbook tilt-element">
+                    <div class="mac-screen">
+                        <div class="mock-ui-header">
+                            <div class="ui-dot" style="background:#ff5f56"></div>
+                            <div class="ui-dot" style="background:#ffbd2e"></div>
+                            <div class="ui-dot" style="background:#27c93f"></div>
+                        </div>
+                        <div class="mock-ui-body">
+                            <div style="display: flex; gap: 10px;">
+                                <div class="ui-block" style="flex:2;"></div>
+                                <div class="ui-block" style="flex:1;"></div>
+                            </div>
+                            <div class="ui-skeleton" style="width: 60%;"></div>
+                            <div class="ui-skeleton" style="width: 80%;"></div>
+                            <div class="ui-block" style="height: 120px;"></div>
+                        </div>
+                    </div>
+                    <div class="mac-body-bottom"></div>
+                </div>
+                <div class="css-iphone tilt-element">
+                    <div class="phone-notch"></div>
+                    <div class="phone-screen">
+                        <div class="connect-btn"><i class="fas fa-power-off" style="color:#fff; font-size: 24px;"></i></div>
+                        <p style="color:#666; font-size: 12px; margin-top: 20px;">Connected</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-padding" id="features">
+        <div class="container">
+            <div class="feature-row reveal">
+                <div class="feature-img tilt-wrap">
+                    <div class="feature-card tilt-element">
+                        <i class="fas fa-shield-alt shield-icon"></i>
+                        <i class="fas fa-lock lock-icon"></i>
+                    </div>
+                </div>
+                <div class="feature-info">
+                    <i class="fas fa-user-shield" style="font-size: 2rem; color: var(--secondary); margin-bottom: 20px;"></i>
+                    <h3>企业级安全稳定</h3>
+                    <p>OSLink 采用私有化协议与端到端加密技术（E2EE）。只允许在您自己的账号下设备互联，最大程度消除数据泄露风险。您的数据，仅属于您。</p>
+                    <a href="#" class="btn btn-outline" style="border-radius: 8px; font-size: 0.9rem;">了解安全白皮书</a>
+                </div>
+            </div>
+
+            <div class="feature-row reverse reveal">
+                <div class="feature-img tilt-wrap">
+                    <div class="feature-card tilt-element">
+                        <div class="keyboard-layout">
+                            <div class="key">Q</div><div class="key active">W</div><div class="key">E</div>
+                            <div class="key active">A</div><div class="key active">S</div><div class="key active">D</div>
+                            <div class="key" style="grid-column: span 3; font-size: 0.8rem;">SPACE</div>
+                        </div>
+                        <i class="fas fa-mouse-pointer" style="position: absolute; right: 80px; bottom: 60px; color: var(--secondary); font-size: 2rem; filter: drop-shadow(0 0 10px var(--secondary));"></i>
+                    </div>
+                </div>
+                <div class="feature-info">
+                    <i class="fas fa-keyboard" style="font-size: 2rem; color: var(--primary); margin-bottom: 20px;"></i>
+                    <h3>键鼠映射，高效工作</h3>
+                    <p>支持移动端外接蓝牙键鼠，或者使用屏幕虚拟按键。完美还原 PC 操作逻辑，无论是复杂的设计软件快捷键，还是文档编辑，都能得心应手。</p>
+                </div>
+            </div>
+
+            <div class="feature-row reveal">
+                <div class="feature-img tilt-wrap">
+                    <div class="feature-card tilt-element">
+                        <div class="hd-badge">1080P</div>
+                        <div style="position: absolute; bottom: 80px; font-size: 1.2rem; color: var(--secondary); letter-spacing: 5px;">60 FPS</div>
+                    </div>
+                </div>
+                <div class="feature-info">
+                    <i class="fas fa-eye" style="font-size: 2rem; color: #fff; margin-bottom: 20px;"></i>
+                    <h3>高清画质，极低延迟</h3>
+                    <p>独家优化的流媒体传输算法。远程画面可达 1080P 60帧（甚至支持 4K），视觉体验如本地般丝滑。智能丢包补偿，弱网环境依然稳定。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-padding game-section" id="games">
+        <div class="container">
+            <div class="text-center reveal">
+                <h2>畅玩端游、手游</h2>
+                <p class="section-desc">探索游戏宇宙，一切可能</p>
+            </div>
+            <div class="game-grid reveal">
+                <div class="game-card tilt-element">
+                    <div class="game-bg g-1"></div>
+                    <div class="game-info">
+                        <h4>Cyberpunk 2077</h4>
+                        <span class="game-tag">RPG</span> <span class="game-tag">光追</span>
+                    </div>
+                </div>
+                <div class="game-card tilt-element">
+                    <div class="game-bg g-2"></div>
+                    <div class="game-info">
+                        <h4>Elden Ring</h4>
+                        <span class="game-tag">动作</span> <span class="game-tag">年度最佳</span>
+                    </div>
+                </div>
+                <div class="game-card tilt-element">
+                    <div class="game-bg g-3"></div>
+                    <div class="game-info">
+                        <h4>Forza Horizon 5</h4>
+                        <span class="game-tag">竞速</span> <span class="game-tag">多人</span>
+                    </div>
+                </div>
+                <div class="game-card tilt-element">
+                    <div class="game-bg g-4"></div>
+                    <div class="game-info">
+                        <h4>Genshin Impact</h4>
+                        <span class="game-tag">开放世界</span> <span class="game-tag">二次元</span>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center" style="margin-top: 40px;">
+                <a href="#" class="btn btn-outline">查看更多支持游戏</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-padding">
+        <div class="container">
+            <div class="text-center reveal">
+                <h2>OSLink 核心优势</h2>
+                <p class="section-desc">为极客与专业用户打造的极致体验</p>
+            </div>
+            
+            <div class="adv-grid reveal">
+                <div class="adv-card tilt-element">
+                    <i class="fas fa-gamepad"></i>
+                    <h4>远程控制</h4>
+                    <a href="#">查看详情 <i class="fas fa-chevron-right"></i></a>
+                </div>
+                <div class="adv-card tilt-element">
+                    <i class="fas fa-clone"></i>
+                    <h4>多开游戏/应用</h4>
+                    <a href="#">查看详情 <i class="fas fa-chevron-right"></i></a>
+                </div>
+                <div class="adv-card tilt-element">
+                    <i class="fas fa-sync-alt" style="color: #fff;"></i>
+                    <h4>多端同步操作</h4>
+                    <a href="#">查看详情 <i class="fas fa-chevron-right"></i></a>
+                </div>
+                <div class="adv-card tilt-element">
+                    <i class="fas fa-share-square" style="color: #fff;"></i>
+                    <h4>屏幕分享，一起玩</h4>
+                    <a href="#">查看详情 <i class="fas fa-chevron-right"></i></a>
+                </div>
+                <div class="adv-card tilt-element">
+                    <i class="fas fa-tachometer-alt" style="color: var(--primary);"></i>
+                    <h4>高帧率、支持外设</h4>
+                    <a href="#">查看详情 <i class="fas fa-chevron-right"></i></a>
+                </div>
+                <div class="adv-card tilt-element">
+                    <i class="fas fa-shield-virus"></i>
+                    <h4>安全稳定防封号</h4>
+                    <a href="#">查看详情 <i class="fas fa-chevron-right"></i></a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-padding" id="blog">
+        <div class="container">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px;" class="reveal">
+                <h3 style="font-size: 1.8rem; font-weight: 700;">最新攻略</h3>
+                <a href="#" style="color: var(--text-sub);">查看所有文章 >></a>
+            </div>
+
+            <div class="blog-grid reveal">
+                <a href="#" class="blog-card">
+                    <div class="blog-thumb bg-gradient-1"></div>
+                    <h5>如何使用手机连接电脑玩 PC 3A 大作？</h5>
+                    <p>详细教程教你如何通过OSLink设置手机端，无需高配手机...</p>
+                    <div class="blog-meta">2025-07-05</div>
+                </a>
+                <a href="#" class="blog-card">
+                    <div class="blog-thumb bg-gradient-2"></div>
+                    <h5>将 iPad 变成生产力工具：远程键鼠设置指南</h5>
+                    <p>利用蓝牙键鼠映射功能，让平板也能处理复杂表格和设计稿。</p>
+                    <div class="blog-meta">2025-07-03</div>
+                </a>
+                <a href="#" class="blog-card">
+                    <div class="blog-thumb bg-gradient-3"></div>
+                    <h5>家庭多屏互动：手机投屏到电视玩游戏</h5>
+                    <p>打造家庭娱乐中心，低延迟投屏方案分享。</p>
+                    <div class="blog-meta">2025-06-28</div>
+                </a>
+                <a href="#" class="blog-card">
+                    <div class="blog-thumb bg-gradient-4"></div>
+                    <h5>运维人员必备：随时随地监控服务器状态</h5>
+                    <p>安全连接公司内网服务器，紧急情况快速响应。</p>
+                    <div class="blog-meta">2025-06-20</div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-col">
+                    <div class="logo" style="margin-bottom: 20px;">
+                        <i class="fas fa-bolt"></i>
+                        <span>OSLink</span>
+                    </div>
+                    <p style="color: #666; font-size: 0.9rem; max-width: 250px;">
+                        为玩家和专业人士提供最流畅、安全的远程连接解决方案。
+                    </p>
+                    <div style="margin-top: 20px; display: flex; gap: 15px;">
+                        <a href="#"><i class="fab fa-weixin"></i></a>
+                        <a href="#"><i class="fab fa-weibo"></i></a>
+                        <a href="#"><i class="fab fa-tiktok"></i></a>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h4>产品</h4>
+                    <ul>
+                        <li><a href="#">下载中心</a></li>
+                        <li><a href="#">价格方案</a></li>
+                        <li><a href="#">企业版</a></li>
+                        <li><a href="#">更新日志</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>支持</h4>
+                    <ul>
+                        <li><a href="#">帮助中心</a></li>
+                        <li><a href="#">社区论坛</a></li>
+                        <li><a href="#">联系客服</a></li>
+                        <li><a href="#">API 文档</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>关于</h4>
+                    <ul>
+                        <li><a href="#">公司介绍</a></li>
+                        <li><a href="#">加入我们</a></li>
+                        <li><a href="#">隐私协议</a></li>
+                        <li><a href="#">服务条款</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                Copyright © 2025 OSLink Inc. All Rights Reserved. 沪ICP备12345678号
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            
+            // 1. 滚动登场动画 (Scroll Reveal)
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('active');
+                    }
+                });
+            }, { threshold: 0.1 }); // 元素出现10%时触发
+
+            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+            // 2. 通用 3D 倾斜效果 (Universal Tilt Effect)
+            // 适用于所有带有 .tilt-element 的元素
+            const tiltElements = document.querySelectorAll('.tilt-element');
+
+            tiltElements.forEach(card => {
+                card.addEventListener('mousemove', (e) => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    
+                    // 限制旋转角度，防止过度旋转
+                    const rotateX = -((y - centerY) / 20); 
+                    const rotateY = (x - centerX) / 20;
+
+                    // 关键：在父容器上可能有 perspective，但变换应用在当前元素
+                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+                });
+            });
+        });
+    </script>
+</body>
+</html>
